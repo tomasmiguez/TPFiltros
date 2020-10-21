@@ -1,2 +1,10 @@
 # Carpeta generada por VSCode
 .vscode
+
+# Ignoro todo contenido de src/build/
+# Ya que se sobreescribe cada vez que uno  hace make
+src/build/*
+
+# Ignoro todas las imagenes que no sean de entrada (las que estan fuera de src/img/)
+*.bmp
+!src/img/*.bmp

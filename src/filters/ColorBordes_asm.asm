@@ -5,9 +5,8 @@ section .rodata
 
 ALIGN 16
 
-MASK_OR: DB 0, 0, 0, 255, 0, 0, 0, 255
+MASK_OR: DD 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000
 
-PIXEL_BLANCO: DB 255, 255, 255, 255
 
 section .text
 
@@ -30,93 +29,91 @@ ColorBordes_asm: ; RDI <- src / RSI <- dst / RDX <- width / RCX <- height
     MOV RBX, RDI    ; RBX <- src
     MOV R12, RSI    ; R12 <- dst
     MOV R8, RDX     ; R8  <- width
-    MOV R14, RDX    ; R14 <- width-1
-    DEC R14
-    MOV R15, RCX    ; R15 <- height-1
-    DEC R14
 
-    MOV R10, RBX    ; Puntero a la posicion actual de src
-    MOV R11, R12    ; Puntero a la posicion actual del resultado    
+    MOV R15, R8     ; R15 <- width
+    SUB R15, 2      ; R15 <- width-2
+    MOV EAX, ECX    ; EAX <- height
+    SUB EAX, 2      ; EAX <- height-2
+    MUL R15D
+    MOV R15D, EAX   ; R15 <- (height-2)*(width-2)
+    SAR R15, 1      ; R15 <- (height-2)*(width-2)/2
 
-    MOV RCX, 1      ; Contador de altura i
-.loopAltura:
-    
-    MOV R13, 1      ; Contador de ancho j
-.loopAncho:
+    MOV R14, R8
+    SAR R14, 1
+    DEC R14         ; R14 <- (width/2)-1
 
-    MOV R9, 0
-    MOV R9, R8         ; R9 <- width
-    LEA R9, [4*R9]      ; R9 <- 4*width
-    MOV EAX, ECX
-    DEC EAX
-    MUL R9D
-    MOV R9, RAX         ; R9 <- 4*width*(i-1)
-    MOV RAX, R13
-    DEC RAX
-    LEA R9, [R9+4*RAX]  ; R9 <- 4*(width*(i-1)+(j-1))
-    ADD R9, RBX         ; R9 <- src+4*(width*(i-1)+(j-1))
+    MOV R10, RBX    ; Puntero a src
+    MOV R11, R12    ; Puntero a resultado    
 
-    ; Vamos a guardar los 8 bits de resultado aca, lo empezamos en 0
-    PANDN XMM15, XMM15  ; XMM0 <- [0 0 0 0 0 0 0 0]
+    MOV RCX, 0      ; Contador de iteracion
+    MOV R13, 0      ; Contador de iteracion en la fila
 
-    MOVDQU XMM0, [R9]   ; XMM0 <- [ T1A T1R T1G T1B TLA TLR TLG TLB ]
-    ADD R9, 16
-    MOVDQU XMM1, [R9]   ; XMM1 <- [ TRA TRR TRG TRB T2A T2R T2G T2B ]
+    LEA R12, [R12+4*R8]
+    ADD R12, 4
+.loop:
+    MOV R9, RBX
+    MOVDQU XMM0, [R9]   ; XMM0  <- [ TR T2 T1 TL ]
     LEA R9, [R9+4*R8]
-    MOVDQU XMM3, [R9]   ; XMM3 <- [ MRA MRR MRG MRB P2A P2R P2G P2B ]
-    SUB R9, 16
-    MOVDQU XMM2, [R9]   ; XMM2 <- [ P1A P1R P1G P1B MLA MLR MLG MLB ]
+    MOVDQU XMM1, [R9]   ; XMM1  <- [ MR P2 P1 ML ]
     LEA R9, [R9+4*R8]
-    MOVDQU XMM4, [R9]   ; XMM4 <- [ B1A B1R B1G B1B BLA BLR BLG BLB ]
-    ADD R9, 16
-    MOVDQU XMM5, [R9]   ; XMM5 <- [ BRA BRR BRG BRB B2A B2R B2G B2B ]
+    MOVDQU XMM2, [R9]   ; XMM2  <- [ BR B2 B1 BL ]
 
-    MOVDQA XMM6, XMM0   ; XMM6  <- [ T1 TL ]
-    PSUBB XMM6, XMM1    ; XMM6  <- [ T1-TR TL-T2 ]
-    PABSB XMM6, XMM6    ; XMM6  <- [ |T1-TR| |TL-T2| ]
-    MOVDQA XMM15, XMM6  ; XMM15 <- [ |T1-TR| |TL-T2| ]
- 
-    MOVDQA XMM7, XMM2   ; XMM7  <- [ P1 ML ]
-    PSUBB XMM7, XMM3    ; XMM7  <- [ P1-MR ML-P2 ]
-    PABSB XMM7, XMM7    ; XMM6  <- [ |P1-MR| |ML-P2| ]
-    PADDSB XMM15, XMM7  ; XMM15 <- [ |T1-TR|+|P1-MR| |TL-T2|+|ML-P2| ]
+    MOVDQA XMM3, XMM0   ; XMM3  <- [ TR T2 T1 TL ]
+    PSUBB XMM3, XMM2   ; XMM3  <- [ TR-BR T2-B2 T1-B1 TL-BL ]
+    PABSB XMM3, XMM3    ; XMM3  <- [ |TR-BR| |T2-B2| |T1-B1| |TL-BL| ]
 
-    MOVDQA XMM8, XMM4   ; XMM8  <- [ B1 BL ]
-    PSUBB XMM8, XMM5    ; XMM8  <- [ B1-BR BL-B2]
-    PABSB XMM8, XMM8    ; XMM8  <- [ |B1-BR| |BL-B2| ]
-    PADDSB XMM15, XMM8  ; XMM15 <- [ |T1-TR|+|P1-MR|+|B1-BR| |TL-T2|+|ML-P2|+|BL-B2| ]
-    
-    MOVDQA XMM6, XMM0   ; XMM6  <- [ T1 TL ]
-    PSUBB XMM6, XMM4     ; XMM6  <- [ T1-B1 TL-BL ]
-    PABSB XMM6, XMM6    ; XMM6  <- [ |T1-B1| |TL-BL| ]
-    PADDSB XMM15, XMM6  ; XMM15 <- [ (|T1-B1|)+(|T1-TR|+|P1-MR|+|B1-BR|) (|TL-BL|)+(|TL-T2|+|ML-P2|+|BL-B2|) ]
+    MOVDQA XMM15, XMM3  ; XMM15 <- [ |TR-BR| |T2-B2| |T1-B1| |TL-BL| ]
+    PSRLDQ XMM3, 4      ; XMM3  <- [ 0       |TR-BR| |T2-B2| |T1-B1| ]
+    PADDSB XMM15, XMM3  ; XMM15 <- [ X X |T2-B2|+|T1-B1| |T1-B1|+|TL-BL| ]
+    PSRLDQ XMM9, 4      ; XMM9  <- [ 0       0       |TR-BR| |T2-B2| ]
+    PADDSB XMM15, XMM3  ; XMM15 <- [ X X |TR-BR|+|T2-B2|+|T1-B1| |T2-B2|+|T1-B1|+|TL-BL| ]
 
-    MOVDQA XMM7, XMM1   ; XMM7  <- [ TR T2 ]
-    PSUBB XMM7, XMM5     ; XMM7  <- [ TR-BR T2-B2 ]
-    PABSB XMM7, XMM7    ; XMM7  <- [ |TR-BR| |T2-B2| ]
-    PADDSB XMM15, XMM6  ; XMM15 <- [ (|TR-BR|+|T1-B1|)+(|T1-TR|+|P1-MR|+|B1-BR|) (|T2-B2|+|TL-BL|)+(|TL-T2|+|ML-P2|+|BL-B2|) ]
+    MOVDQA XMM3, XMM0   ; XMM3  <- [ TR T2 T1 TL ]
+    PSRLDQ XMM3, 8      ; XMM3  <- [ 0  0  TR T2 ]
+    PSUBB XMM3, XMM0   ; XMM3  <- [ X X TR-T1 T2-TL ]
+    PABSB XMM3, XMM3    ; XMM3  <- [ X X |TR-T1| |T2-TL| ]
+    PADDSB XMM15, XMM3  ; XMM15 <- [ X X (|TR-T1|)+(|TR-BR|+|T2-B2|+|T1-B1|) (|T2-TL|)+(|T2-B2|+|T1-B1|+|TL-BL|) ]
 
-    PSRLDQ XMM6, 8      ; XMM6  <- [ 0 |T1-B1| ]
-    PADDSB XMM15, XMM6  ; XMM15 <- [ (|TR-BR|+|T1-B1|)+(|T1-TR|+|P1-MR|+|B1-BR|) (|T1-B1|+|T2-B2|+|TL-BL|)+(|TL-T2|+|ML-P2|+|BL-B2|) ]
-    
-    PSLLDQ XMM7, 8      ; XMM7  <- [ |T2-B2| 0 ]
-    PADDSB XMM15, XMM7  ; XMM15 <- [ (|T2-B2|+|TR-BR|+|T1-B1|)+(|T1-TR|+|P1-MR|+|B1-BR|) (|T1-B1|+|T2-B2|+|TL-BL|)+(|TL-T2|+|ML-P2|+|BL-B2|) ]
+    MOVDQA XMM3, XMM1   ; XMM3  <- []
+    PSRLDQ XMM3, 8      ; XMM3  <- []
+    PSUBB XMM3, XMM1   ; XMM3  <- []
+    PABSB XMM3, XMM3    ; XMM3  <- []
+    PADDSB XMM15, XMM3  ; XMM15 <- []
+
+    MOVDQA XMM3, XMM2   ; XMM3  <- []
+    PSRLDQ XMM3, 8      ; XMM3  <- []
+    PSUBB XMM3, XMM2   ; XMM3  <- []
+    PABSB XMM3, XMM3    ; XMM3  <- []
+    PADDSB XMM15, XMM3  ; XMM15 <- []
 
     MOVDQA XMM10, [MASK_OR]
-    POR XMM15, XMM10    ; XMM15 <- [ FF x x x FF x x x ]
+    POR XMM15, XMM10    ; XMM15 <- [ X X X X X X X X FF P2R P2G P2B FF P1R P1G P1B ]
 
-    MOVDQU [R12], XMM15
+    MOVQ [R12], XMM15
 
-    ADD R12, 16
-    ADD R13, 2
-    CMP R13, R14
-    JNE .loopAncho
     INC RCX
+    INC R13
+    ADD R12, 8
+    ADD RBX, 8
     CMP RCX, R15
-    JMP .endLoop
-    JMP .loopAltura
+    JE .bordeBlanco
+    CMP R13, R14
+    JNE .loop
+    MOV R13, 0
+    ADD R12, 8
+    ADD RBX, 8
+    JMP .loop
 
-.endLoop:
+.bordeBlanco:
+    MOV RBX, R11
+    MOV RCX, 0
+.loopPrimeraFila:
+    ;MOV qword[RBX], 0
+
+    ADD RBX, 8
+    INC RCX
+    CMP RCX, R8
+    JL .loopPrimeraFila
 
     ADD RSP, 8
     POP R15

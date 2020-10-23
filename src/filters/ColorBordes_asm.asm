@@ -109,11 +109,11 @@ ColorBordes_asm: ; RDI <- src / RSI <- dst / RDX <- width / RCX <- height
 .loopPrimeraFila:
     MOV qword[RBX], -1
     ADD RBX, 8
-    INC RCX
+    ADD RCX, 2
     CMP RCX, R8
     JL .loopPrimeraFila
 
-    SUB R10, 4
+    SUB R10, 2
     MOV RCX, 0
 .loopCostados:
     MOV dword[RBX], -1
@@ -130,7 +130,7 @@ ColorBordes_asm: ; RDI <- src / RSI <- dst / RDX <- width / RCX <- height
 .loopUltimaFila:
     MOV qword[RBX], -1
     ADD RBX, 8
-    INC RCX
+    ADD RCX, 2
     CMP RCX, R8
     JL .loopUltimaFila
 

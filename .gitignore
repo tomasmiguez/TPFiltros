@@ -8,3 +8,6 @@ src/build/*
 # Ignoro todas las imagenes que no sean de entrada (las que estan fuera de src/img/)
 *.bmp
 !src/img/*.bmp
+
+# Ignoro gdb_history
+*.gdb_history

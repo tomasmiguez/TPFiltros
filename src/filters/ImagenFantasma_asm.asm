@@ -71,14 +71,9 @@ ImagenFantasma_asm:
     ; | offsety |  rbp+24 |
     ; (+)
 
-    mov r12d, edx
-    shr r12d, 2                             ; r12d = width/4
     mov r13, rdi
     mov r14d, edx                           ; r14d = width
     shl r14d, 5                             ; r14d = width*32
-    ;mov r15d, edx                           ; r15d = width
-    ;imul r15d, ecx                          ; r15d = width*height
-    ;shl r15d, 5                             ; r15d = width*height*32
 
     ; Guardo las mascaras en registros xmm para no tener que hacerlo en cada iteracion
     movdqu xmm15, [select_red]
@@ -107,7 +102,6 @@ ImagenFantasma_asm:
         cmp r9d, edx
         jge .actualizoLoopFilas
         
-        
         ; Calculo indices de la img fantasma EN PIXELES
         mov r10d, r8d                       ; r10 = i
         shr r10d, 1                         ; r10 = i/2
@@ -124,13 +118,6 @@ ImagenFantasma_asm:
         shl r15d, 5
         add eax, r15d
         
-
-        ;imul r10d, edx                      ; r10d = ii*width
-        ;lea r10d, [r10d + r11d * 4]         ; r10d += jj*4 
-        ;mov r11, r13                        ; r11 = rdi
-        ;lea r11, [r11 + r10]                ; rdi += r10
-        ;add r10d, r11d                     ; r10 = ii + jj
-
         ; Obtengo rrr-ggg-bbb
         ; Guardo copias para los distintos colores de la img fantasma
         movdqu xmm0, [r13 + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
@@ -159,12 +146,6 @@ ImagenFantasma_asm:
         divps xmm1, xmm12
         ; xmm1 : [ (rrr3+2*ggg3+bbb3)/4 | (rrr2+2*ggg2+bbb2)/4 | (rrr1+2*ggg1+bbb1)/4 | (rrr0+2*ggg0+bbb0)/4 ]
 
-
-        ; Obtengo rr-gg-bb
-        ; Guardo copias para los distintos colores
-        ; En BITS
-        ;mov eax, r8d
-        ;add eax, r9d
         
         ; En pixeles
         mov eax, r8d                                     ; eax = i esta en pixeles
@@ -172,7 +153,7 @@ ImagenFantasma_asm:
         mov r15d, r9d                                    ; r15d = j
         shl r15d, 5                                      ; r15d = j * 32
         add eax, r15d                                    ; eax = i*width*32 + j*32
-        
+
         movdqu xmm0, [rdi + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
@@ -319,31 +300,12 @@ ImagenFantasma_asm:
         por xmm0, xmm4
     ;xmm0: [a3 | dst.r3 | dst.g3 | dst.b3 | a2 | dst.r2 | dst.g2 | dst.b2 | a1 | dst.r1 | dst.g1 | dst.b1 | a0 | dst.r0 | dst.g0 | dst.b0 ]
 
-        ;movdqu [rsi], xmm0
-        ;inc r9d
-        ;mov eax, r8d                                    ; eax = i
-        ;imul eax, edx                                   ; eax = i*width
-        ;lea eax, [eax + r9d * 4]                        ; eax += j*4 
-        ;lea rdi, [rdi + rax]                            ; rdi += rax
-        ;lea rsi, [rsi + rax]                            ; rsi += rax
-        ;jmp .loopColumnas
-        
         ; En pixeles
         movdqu [rsi + rax], xmm0
         add r9d, 4                                       ; j esta en pixeles
         jmp .loopColumnas
 
-        ; En bits:
-        ;movdqu [rsi + rax], xmm0
-        ;add r9d, 128
-        ;jmp .loopColumnas
-
 .actualizoLoopFilas:
-    ; Agregarle a r8d width*32= width * largo de pixel en bits
-    ; Compararlo con width*height*32= largo de la matriz en bits
-    ;add r8d, r14d
-    ;jmp .loopFilas
-
     ; En pixeles
     inc r8d 
     jmp .loopFilas

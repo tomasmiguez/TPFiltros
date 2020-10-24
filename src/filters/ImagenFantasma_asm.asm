@@ -1,6 +1,3 @@
-extern ImagenFantasma_c
-global ImagenFantasma_asm
-
 section .rodata
 ; Defino las mascaras
 ALIGN 16
@@ -10,7 +7,6 @@ select_green: db 0x01, 0x80, 0x80, 0x80, 0x05, 0x80, 0x80, 0x80, 0x09, 0x80, 0x8
 select_blue:  db 0x00, 0x80, 0x80, 0x80, 0x04, 0x80, 0x80, 0x80, 0x08, 0x80, 0x80, 0x80, 0x0C, 0x80, 0x80, 0x80
 
 pshufb_alpha: db 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x07, 0x80, 0x80, 0x80, 0x0B, 0x80, 0x80, 0x80, 0x0F
-
 pshufb_red: db 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80
 pshufb_green: db 0x80, 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80
 pshufb_blue: db 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80
@@ -19,6 +15,8 @@ mask_2:   dd 2.0, 2.0, 2.0, 2.0
 mask_0_9: dd 0.9, 0.9, 0.9, 0.9
 
 section .text
+global ImagenFantasma_asm
+
 ; Ancho de la imagen mayor a 16 pixeles y multiplo de 8 pixeles
 
 ; void ImagenFantasma_asm (uint8_t *src,
@@ -67,17 +65,17 @@ ImagenFantasma_asm:
     shl r14d, 2                             ; r14d = width*4
 
     ; Guardo las mascaras en registros xmm para no tener que hacerlo en cada iteracion
-    movdqu xmm15, [select_red]
-    movdqu xmm14, [select_green]
-    movdqu xmm13, [select_blue]
+    movdqa xmm15, [select_red]
+    movdqa xmm14, [select_green]
+    movdqa xmm13, [select_blue]
 
-    movdqu xmm12, [mask_2]
-    movdqu xmm11, [mask_0_9]
+    movdqa xmm12, [mask_2]
+    movdqa xmm11, [mask_0_9]
 
-    movdqu xmm10, [pshufb_alpha]
-    movdqu xmm9, [pshufb_red]
-    movdqu xmm8, [pshufb_green]
-    movdqu xmm7, [pshufb_blue]
+    movdqa xmm10, [pshufb_alpha]
+    movdqa xmm9, [pshufb_red]
+    movdqa xmm8, [pshufb_green]
+    movdqa xmm7, [pshufb_blue]
     
     xor r8, r8                                      ; r8 = 0
 
@@ -92,7 +90,7 @@ ImagenFantasma_asm:
         cmp r9d, edx
         jge .actualizoLoopFilas
         
-        ; Calculo indices de la img fantasma EN PIXELES
+        ; Calculo indices de la img fantasma
         mov r10d, r8d                       ; r10 = i
         shr r10d, 1                         ; r10 = i/2
         add r10d, [rbp + 24]                ; r10 = i/2 + offsety = ii
@@ -101,7 +99,6 @@ ImagenFantasma_asm:
         shr r11d, 1                         ; r11 = j/2
         add r11d, [rbp + 16]                ; r11 = j/2 + offsetx = jj
 
-        ; En pixeles
         mov eax, r10d                       ; eax = ii
         imul eax, r14d                      ; eax = ii*width*4
         mov r15d, r11d                      ; r15d = jj
@@ -111,9 +108,9 @@ ImagenFantasma_asm:
         ; Obtengo rrr-ggg-bbb
         ; Guardo copias para los distintos colores de la img fantasma
         movdqu xmm0, [rdi + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm1, xmm0                   ; xmm1 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm1, xmm0                   ; xmm1 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
 
         ; Extiendo cada color con ceros (son unsigned)
         pshufb xmm1, xmm15                  ; xmm1 : [00 00 00 r3 | 00 00 00 r2 | 00 00 00 r1 | 00 00 00 r0]
@@ -143,9 +140,9 @@ ImagenFantasma_asm:
         add eax, r15d                                    ; eax = i*width*4 + j*4
 
         movdqu xmm0, [rdi + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
-        movdqu xmm4, xmm0                   ; xmm4 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqa xmm4, xmm0                   ; xmm4 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         
         pshufb xmm2, xmm15                  ; xmm2 : [00 00 00 r3 | 00 00 00 r2 | 00 00 00 r1 | 00 00 00 r0]
         pshufb xmm3, xmm14                  ; xmm3 : [00 00 00 g3 | 00 00 00 g2 | 00 00 00 g1 | 00 00 00 g0]

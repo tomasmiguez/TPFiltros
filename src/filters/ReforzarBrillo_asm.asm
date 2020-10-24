@@ -3,13 +3,16 @@ ALIGN 16
 
 mask_pshufb_u: dq 0x0100010001000100,0x0100010001000100
 mask_pshufb_b: dq 0x0000000000000000,0x0000000000000000
-;mask_pshufb_1: dq 0x8007800680038002,0x800F800E800B800A
-;mask_pshufb_2: dq 0x8005800680018002,0x800D800E8009800A
+;mask_pshufb_1: dq 0x0680078002800380,0x0E800F800A800B80
+;mask_pshufb_2: dq 0x0680058002800180,0x0E800D800A800980
+mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
+mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
+
 mask_pshufb_1: dq 0x8006800580028001,0x800E800D800A8009
 mask_pshufb_2: dq 0x8004800580008001,0x800C800D80088009
-mask_pshufb_L: dq 0x0504050401000100,0x0D0C0D0C09080908
-mask_pshufb_H: dq 0x0706070603020302,0x0F0E0F0E0B0A0B0A
-;mask_alpha: dq 0xFF000000FF000000,0xFF000000FF000000
+
+;mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
+;mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
 
 extern ReforzarBrillo_c
 global ReforzarBrillo_asm
@@ -43,21 +46,18 @@ ReforzarBrillo_asm:
     or rdx, rax  ; [edx:eax]
     mov rbx, rdx ; rbx : length (en px)
     ; umbral y brillo, lo replico a lo largo de 128 bits
-    movd xmm0, [rbp+16] ; uSup : xmm0[31:0]
-    movd xmm1, [rbp+24] ; uInf : xmm1[31:0]
-    movd xmm2, [rbp+32] ; bSup : xmm2[31:0]
-    movd xmm3, [rbp+40] ; bInf : xmm3[31:0]
+    movd xmm4, [rbp+16] ; uSup : xmm0[31:0]
+    movd xmm5, [rbp+24] ; uInf : xmm1[31:0]
+    movd xmm6, [rbp+32] ; bSup : xmm2[31:0]
+    movd xmm7, [rbp+40] ; bInf : xmm3[31:0]
     ; paso de int32 a uint16 saturado, porque luego comparo a word
-    packusdw xmm4, xmm0 ; uSup : xmm0[31:0] => xmm0[15:0]
-    packusdw xmm5, xmm1 ; uInf : xmm1[31:0] => xmm0[15:0]
-
-    ; VER PSHUFB NO PASA BIEN LOS VALORES
-
+    packusdw xmm4, xmm4 ; uSup : xmm0[31:0] => xmm0[15:0]
+    packusdw xmm5, xmm5 ; uInf : xmm1[31:0] => xmm0[15:0]
     pshufb xmm4, [mask_pshufb_u] ; repito uSup en todos las words
     pshufb xmm5, [mask_pshufb_u] ; repito uInf en todas las words
     ; paso de int16 a uint8 saturado, porque luego sumo/resto a byte
-    packuswb xmm6, xmm2 ; bSup : xmm2[31:0] => xmm0[7:0]
-    packuswb xmm7, xmm3 ; bInf : xmm3[31:0] => xmm0[7:0]
+    packuswb xmm6, xmm6 ; bSup : xmm2[31:0] => xmm0[7:0]
+    packuswb xmm7, xmm7 ; bInf : xmm3[31:0] => xmm0[7:0]
     pshufb xmm6, [mask_pshufb_b] ; repito bSup en todos los bytes
     pshufb xmm7, [mask_pshufb_b] ; repito bInf en todos los bytes
     ; inicializo index
@@ -81,13 +81,13 @@ ReforzarBrillo_asm:
     paddw xmm10, xmm11 ; |p3_1|p3_0|p2_1|p2_0|p1_1|p1_0|p0_1|p0_0|
     paddw xmm12, xmm13 ; |p7_1|p7_0|p6_1|p6_0|p5_1|p5_0|p4_1|p4_0|
     ; suma en linea completa
-    phaddw xmm10, xmm12 ; |p7|p3|p6|p2|p5|p1|p4|p0|
+    phaddw xmm10, xmm12 ; |p7|p6|p3|p2|p5|p4|p1|p0|
     ; divido por 4 cada uno y obtengo los valores de cmp
-    psrlw xmm10, 2 ; |b7|b3|b6|b2|b5|b1|b4|b0|
+    psrlw xmm10, 2 ; |b7|b6|b3|b2|b5|b4|b1|b0|
     ; comparo los b con los umbrales
-    movdqa xmm11, xmm10 ; resguardo xmm0 : xmm10
+    movdqa xmm11, xmm10 ; resguardo xmm11 : xmm10
     pcmpgtw xmm10, xmm4 ; comparo xmm10 > xmm4(uSup) => 1s para los superiores
-    pcmpgtw xmm11, xmm5 ; comparo xmm0  > xmm5(uInf) => 0s para los inferiores
+    pcmpgtw xmm11, xmm5 ; comparo xmm11 > xmm5(uInf) => 0s para los inferiores
     pcmpeqq xmm2, xmm2  ; creo un registro con todos 1s
     pxor xmm11, xmm2    ; invierto los 1s del xmm11  => 1s para los inferiores
     ; reordeno al orden original los resultados
@@ -107,9 +107,6 @@ ReforzarBrillo_asm:
     psubusb xmm0, xmm11 ; resto lo que corresponde a xmm0 : [p3:p2:p1:p0]
     paddusb xmm1, xmm12 ;  sumo lo que corresponde a xmm1 : [p7:p6:p5:p4]
     psubusb xmm1, xmm13 ; resto lo que corresponde a xmm1 : [p7:p6:p5:p4]
-    ; me aseguro que alpha quede en FF
-    ;paddusb xmm0, [mask_alpha] ; resultado final de [p3:p2:p1:p0]
-    ;paddusb xmm1, [mask_alpha] ; resultado final de [p7:p6:p5:p4]
     ; guardo resultados de pixeles en puntero de salida
     movdqu [r13], xmm0 ; guardo primeros 4px
     add r13, 16        ; avanzo 16 bytes (4px)
@@ -117,13 +114,10 @@ ReforzarBrillo_asm:
     ; condicionales
     add r12, 16  ; avanzo 16 bytes (4px)
     add r13, 16  ; avanzo 16 bytes (4px)
-    add r14, 8   ; voy de 8px
+    add r14, 8   ; voy de a 8px
     cmp r14, rbx ; comparo index con length
     jge .end
     jmp .loop
-
-    ; La proxima linea debe ser replazada por el codigo asm
-    ; jmp ReforzarBrillo_c
 
 .end:
     pop r14

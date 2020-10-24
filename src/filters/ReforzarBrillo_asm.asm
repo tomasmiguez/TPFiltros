@@ -3,28 +3,12 @@ ALIGN 16
 
 mask_pshufb_u: dq 0x0100010001000100,0x0100010001000100
 mask_pshufb_b: dq 0x0000000000000000,0x0000000000000000
-;mask_pshufb_1: dq 0x0680078002800380,0x0E800F800A800B80
-;mask_pshufb_2: dq 0x0680058002800180,0x0E800D800A800980
-;funcionan aprox
-;mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
-;mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
-;
-;mask_pshufb_1: dq 0x8006800580028001,0x800E800D800A8009
-;mask_pshufb_2: dq 0x8004800580008001,0x800C800D80088009
-
-;mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
-;mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
-
 mask_pshufb_1: db 0x01,0x80,0x02,0x80,0x05,0x80,0x06,0x80,0x09,0x80,0x0A,0x80,0x0D,0x80,0x0E,0x80
 mask_pshufb_2: db 0x01,0x80,0x00,0x80,0x05,0x80,0x04,0x80,0x09,0x80,0x08,0x80,0x0D,0x80,0x0C,0x80
-
-
 mask_pshufb_L: db 0x00,0x01,0x00,0x01,0x02,0x03,0x02,0x03,0x04,0x05,0x04,0x05,0x06,0x07,0x06,0x07
 mask_pshufb_H: db 0x08,0x09,0x08,0x09,0x0A,0x0B,0x0A,0x0B,0x0C,0x0D,0x0C,0x0D,0x0E,0x0F,0x0E,0x0F
-
 mask_alpha: db 0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF
 
-extern ReforzarBrillo_c
 global ReforzarBrillo_asm
 
 ; void ReforzarBrillo_c(
@@ -95,11 +79,9 @@ ReforzarBrillo_asm:
     ; divido por 4 cada uno y obtengo los valores de cmp
     psrlw xmm10, 2 ; |b7|b6|b5|b4|b3|b2|b1|b0|
     ; comparo los b con los umbrales
-    movdqa xmm11, xmm10 ; resguardo xmm11 : xmm10
-    pcmpgtw xmm10, xmm4 ; comparo xmm10 > xmm4(uSup) => 1s para los superiores
-    pcmpgtw xmm11, xmm5 ; comparo xmm11 > xmm5(uInf) => 0s para los inferiores
-    pcmpeqq xmm2, xmm2  ; creo un registro con todos 1s
-    pxor xmm11, xmm2    ; invierto los 1s del xmm11  => 1s para los inferiores
+    movdqa xmm11, xmm5   ; resguardo xmm2 : xmm5
+    pcmpgtw xmm11, xmm10 ; comparo xmm11 > xmm5(uInf) => 0s para los inferiores
+    pcmpgtw xmm10, xmm4  ; comparo xmm10 > xmm4(uSup) => 1s para los superiores
     ; reordeno al orden original los resultados
     movdqa xmm12, xmm10
     movdqa xmm13, xmm11

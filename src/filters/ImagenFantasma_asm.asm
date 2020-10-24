@@ -10,13 +10,10 @@ select_green: db 0x01, 0x80, 0x80, 0x80, 0x05, 0x80, 0x80, 0x80, 0x09, 0x80, 0x8
 select_blue:  db 0x00, 0x80, 0x80, 0x80, 0x04, 0x80, 0x80, 0x80, 0x08, 0x80, 0x80, 0x80, 0x0C, 0x80, 0x80, 0x80
 
 pshufb_alpha: db 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x07, 0x80, 0x80, 0x80, 0x0B, 0x80, 0x80, 0x80, 0x0F
-; Las comentadas estan al reves!
-;pshufb_red:   db 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x04, 0x80
-;pshufb_green: db 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x04, 0x80, 0x80
-;pshufb_blue:  db 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x04, 0x80, 0x80, 0x80
-pshufb_red:   db 0x80, 0x80, 0x04, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x01, 0x80
-pshufb_green: db 0x80, 0x04, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80
-pshufb_blue:  db 0x04, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80
+
+pshufb_red: db 0x80, 0x80, 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80
+pshufb_green: db 0x80, 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80
+pshufb_blue: db 0x00, 0x80, 0x80, 0x80, 0x01, 0x80, 0x80, 0x80, 0x02, 0x80, 0x80, 0x80, 0x03, 0x80, 0x80, 0x80
 
 mask_2:   dd 2.0, 2.0, 2.0, 2.0
 mask_0_9: dd 0.9, 0.9, 0.9, 0.9
@@ -53,27 +50,21 @@ section .text
 ImagenFantasma_asm:
     push rbp
     mov rbp, rsp
-    push r12
-    push r13
     push r14
     push r15
     
-
     ; Estado de la pila:
     ; (-)
-    ; |   r15   |  rsp    |
-    ; |   r14   |  rbp-24 |
-    ; |   r13   |  rbp-16 |
-    ; |   r12   |  rbp-8  |
-    ; |   rbp   |  rbp    |
-    ; |   rip   |  rbp+8  |
-    ; | offsetx |  rbp+16 |
-    ; | offsety |  rbp+24 |
+    ; |   r15   |  rsp, rsp-16    |
+    ; |   r14   |      rbp-8      |
+    ; |   rbp   |      rbp        |
+    ; |   rip   |     rbp+8       |
+    ; | offsetx |     rbp+16      |
+    ; | offsety |     rbp+24      |
     ; (+)
 
-    mov r13, rdi
     mov r14d, edx                           ; r14d = width
-    shl r14d, 5                             ; r14d = width*32
+    shl r14d, 2                             ; r14d = width*4
 
     ; Guardo las mascaras en registros xmm para no tener que hacerlo en cada iteracion
     movdqu xmm15, [select_red]
@@ -97,7 +88,6 @@ ImagenFantasma_asm:
 
     xor r9, r9
     .loopColumnas:
-        ;cmp r9d, r14d
         ; En pixeles
         cmp r9d, edx
         jge .actualizoLoopFilas
@@ -112,15 +102,15 @@ ImagenFantasma_asm:
         add r11d, [rbp + 16]                ; r11 = j/2 + offsetx = jj
 
         ; En pixeles
-        mov eax, r10d
-        imul eax, r14d
-        mov r15d, r11d
-        shl r15d, 5
-        add eax, r15d
+        mov eax, r10d                       ; eax = ii
+        imul eax, r14d                      ; eax = ii*width*4
+        mov r15d, r11d                      ; r15d = jj
+        shl r15d, 2                         ; r15d = jj*4
+        add eax, r15d                       ; eax = ii*width*4 + jj*4
         
         ; Obtengo rrr-ggg-bbb
         ; Guardo copias para los distintos colores de la img fantasma
-        movdqu xmm0, [r13 + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
+        movdqu xmm0, [rdi + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm1, xmm0                   ; xmm1 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm3, xmm0                   ; xmm3 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
@@ -146,13 +136,11 @@ ImagenFantasma_asm:
         divps xmm1, xmm12
         ; xmm1 : [ (rrr3+2*ggg3+bbb3)/4 | (rrr2+2*ggg2+bbb2)/4 | (rrr1+2*ggg1+bbb1)/4 | (rrr0+2*ggg0+bbb0)/4 ]
 
-        
-        ; En pixeles
-        mov eax, r8d                                     ; eax = i esta en pixeles
-        imul eax, r14d                                   ; eax = i * largo en pixeles * 32 bits
+        mov eax, r8d                                     ; eax = i
+        imul eax, r14d                                   ; eax = i*width*4
         mov r15d, r9d                                    ; r15d = j
-        shl r15d, 5                                      ; r15d = j * 32
-        add eax, r15d                                    ; eax = i*width*32 + j*32
+        shl r15d, 2                                      ; r15d = j*4
+        add eax, r15d                                    ; eax = i*width*4 + j*4
 
         movdqu xmm0, [rdi + rax]            ; xmm0 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
         movdqu xmm2, xmm0                   ; xmm2 : [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
@@ -285,10 +273,13 @@ ImagenFantasma_asm:
 
         pshufb xmm0, xmm10
     ;xmm0: [a3 |    0   |   0    |   0    | a2 |   0    |   0    |   0    | a1 |   0    |   0    |   0    | a0 |   0    |   0    |   0   ]
+
         pshufb xmm2, xmm9
     ;xmm2: [ 0 | dst.r3 |   0    |   0    | 0  | dst.r2 |   0    |   0    | 0  | dst.r1 |   0    |   0    | 0  | dst.r0 |   0    |   0   ]
+        
         pshufb xmm3, xmm8
     ;xmm3: [ 0 |    0   | dst.g3 |   0    | 0  |   0    | dst.g2 |   0    | 0  |   0    | dst.g1 |   0    | 0  |   0    | dst.g0 |   0   ]
+
         pshufb xmm4, xmm7
     ;xmm4: [ 0 |    0   |    0   | dst.b3 | 0  |   0    |   0    | dst.b2 | 0  |   0    |   0    | dst.b1 | 0  |   0    |   0    | dst.b0]
         
@@ -314,7 +305,5 @@ ImagenFantasma_asm:
     ; Actualizo variables de control
     pop r15
     pop r14
-    pop r13
-    pop r12
     pop rbp
     ret

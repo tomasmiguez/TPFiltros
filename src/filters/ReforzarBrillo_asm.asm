@@ -5,14 +5,24 @@ mask_pshufb_u: dq 0x0100010001000100,0x0100010001000100
 mask_pshufb_b: dq 0x0000000000000000,0x0000000000000000
 ;mask_pshufb_1: dq 0x0680078002800380,0x0E800F800A800B80
 ;mask_pshufb_2: dq 0x0680058002800180,0x0E800D800A800980
-mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
-mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
-
-mask_pshufb_1: dq 0x8006800580028001,0x800E800D800A8009
-mask_pshufb_2: dq 0x8004800580008001,0x800C800D80088009
+;funcionan aprox
+;mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
+;mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
+;
+;mask_pshufb_1: dq 0x8006800580028001,0x800E800D800A8009
+;mask_pshufb_2: dq 0x8004800580008001,0x800C800D80088009
 
 ;mask_pshufb_L: dq 0x0302030201000100,0x0B0A0B0A09080908
 ;mask_pshufb_H: dq 0x0706070605040504,0x0F0E0F0E0D0C0D0C
+
+mask_pshufb_1: db 0x01,0x80,0x02,0x80,0x05,0x80,0x06,0x80,0x09,0x80,0x0A,0x80,0x0D,0x80,0x0E,0x80
+mask_pshufb_2: db 0x01,0x80,0x00,0x80,0x05,0x80,0x04,0x80,0x09,0x80,0x08,0x80,0x0D,0x80,0x0C,0x80
+
+
+mask_pshufb_L: db 0x00,0x01,0x00,0x01,0x02,0x03,0x02,0x03,0x04,0x05,0x04,0x05,0x06,0x07,0x06,0x07
+mask_pshufb_H: db 0x08,0x09,0x08,0x09,0x0A,0x0B,0x0A,0x0B,0x0C,0x0D,0x0C,0x0D,0x0E,0x0F,0x0E,0x0F
+
+mask_alpha: db 0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0xFF
 
 extern ReforzarBrillo_c
 global ReforzarBrillo_asm
@@ -81,9 +91,9 @@ ReforzarBrillo_asm:
     paddw xmm10, xmm11 ; |p3_1|p3_0|p2_1|p2_0|p1_1|p1_0|p0_1|p0_0|
     paddw xmm12, xmm13 ; |p7_1|p7_0|p6_1|p6_0|p5_1|p5_0|p4_1|p4_0|
     ; suma en linea completa
-    phaddw xmm10, xmm12 ; |p7|p6|p3|p2|p5|p4|p1|p0|
+    phaddw xmm10, xmm12 ; |p7|p6|p5|p4|p3|p2|p1|p0|
     ; divido por 4 cada uno y obtengo los valores de cmp
-    psrlw xmm10, 2 ; |b7|b6|b3|b2|b5|b4|b1|b0|
+    psrlw xmm10, 2 ; |b7|b6|b5|b4|b3|b2|b1|b0|
     ; comparo los b con los umbrales
     movdqa xmm11, xmm10 ; resguardo xmm11 : xmm10
     pcmpgtw xmm10, xmm4 ; comparo xmm10 > xmm4(uSup) => 1s para los superiores
@@ -107,6 +117,9 @@ ReforzarBrillo_asm:
     psubusb xmm0, xmm11 ; resto lo que corresponde a xmm0 : [p3:p2:p1:p0]
     paddusb xmm1, xmm12 ;  sumo lo que corresponde a xmm1 : [p7:p6:p5:p4]
     psubusb xmm1, xmm13 ; resto lo que corresponde a xmm1 : [p7:p6:p5:p4]
+    ; incorporo alpha 0xFF
+    por xmm0, [mask_alpha]
+    por xmm1, [mask_alpha]
     ; guardo resultados de pixeles en puntero de salida
     movdqu [r13], xmm0 ; guardo primeros 4px
     add r13, 16        ; avanzo 16 bytes (4px)

@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include "../tp2.h"
 #include "../helper/utils.h"
-
+/*
+//Original
 void ImagenFantasma_c(
     uint8_t *src,
     uint8_t *dst,
@@ -40,8 +41,9 @@ void ImagenFantasma_c(
         }
     }
 }
+*/
 
-/*
+//V1
 void ImagenFantasma_c(
     uint8_t *src,
     uint8_t *dst,
@@ -83,8 +85,9 @@ void ImagenFantasma_c(
         }
     }
 }
-*/
+
 /*
+//V2
 void ImagenFantasma_c(
     uint8_t *src,
     uint8_t *dst,
@@ -145,5 +148,4 @@ void ImagenFantasma_c(
             }
         }
     }
-}
-*/
+}*/

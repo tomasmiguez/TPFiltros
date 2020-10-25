@@ -24,20 +24,18 @@ void ReforzarBrillo_c(
         for (int j = 0; j < width; j++) {
 
             int b = (src_matrix[i][j].r + 2*src_matrix[i][j].g + src_matrix[i][j].b)/4;
-        
-            if ( b > umbralSup ) {
-                dst_matrix[i][j].b = SAT(src_matrix[i][j].b+brilloSup);
-                dst_matrix[i][j].g = SAT(src_matrix[i][j].g+brilloSup);
-                dst_matrix[i][j].r = SAT(src_matrix[i][j].r+brilloSup);
-            } else if ( umbralInf > b ) {
-                dst_matrix[i][j].b = SAT(src_matrix[i][j].b-brilloInf);
-                dst_matrix[i][j].g = SAT(src_matrix[i][j].g-brilloInf);
-                dst_matrix[i][j].r = SAT(src_matrix[i][j].r-brilloInf);
-            } else {
-                dst_matrix[i][j].b = src_matrix[i][j].b;
-                dst_matrix[i][j].g = src_matrix[i][j].g;
-                dst_matrix[i][j].r = src_matrix[i][j].r;
+
+            int brillo = 0;
+
+            if ( b > umbralSup ){
+                brillo = brilloSup;
+            } else{
+                brillo = - brilloInf;
             }
+            
+            dst_matrix[i][j].b = SAT(src_matrix[i][j].b+brillo);
+            dst_matrix[i][j].g = SAT(src_matrix[i][j].g+brillo);
+            dst_matrix[i][j].r = SAT(src_matrix[i][j].r+brillo);
         }
     }
 
